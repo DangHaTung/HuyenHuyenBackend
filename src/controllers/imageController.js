@@ -73,7 +73,9 @@ export const getImages = async (req, res) => {
         // Loại bỏ version number từ URL
         const publicId = img.filename || img.cloudinaryId
         if (publicId) {
-          imageUrl = `https://res.cloudinary.com/ddm4qzjmv/image/upload/${publicId}.jpg`
+          const newUrl = `https://res.cloudinary.com/ddm4qzjmv/image/upload/${publicId}.jpg`
+          console.log('🔧 Fixed URL:', imageUrl, '→', newUrl)
+          imageUrl = newUrl
         }
       }
       
