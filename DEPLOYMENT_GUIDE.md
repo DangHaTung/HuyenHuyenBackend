@@ -1,19 +1,33 @@
 # 🚀 Deployment Guide - Huyen Huyen Backend
 
+## ✅ FIXED: Babel-node Error
+
+**Vấn đề**: Render báo lỗi "babel-node not found" vì babel-node chỉ có trong devDependencies
+
+**Giải pháp**: 
+- Loại bỏ Babel hoàn toàn (không cần thiết với ES modules)
+- Sử dụng `node` trực tiếp thay vì `babel-node`
+- Xóa file `.babelrc`
+
 ## Các thay đổi đã thực hiện để fix lỗi deployment:
 
-### 1. ✅ Fix File Upload Path
+### 1. ✅ Fix Babel-node Issue
+- **package.json**: `"start": "node src/index.js"` thay vì `"babel-node src/index.js"`
+- **Xóa**: `.babelrc` file
+- **Xóa**: Babel dependencies khỏi devDependencies
+
+### 2. ✅ Fix File Upload Path
 - **Trước**: Upload vào `../../../HuyenHuyen/image/` (không tồn tại trên server)
 - **Sau**: Upload vào `backend/uploads/` (tạo tự động nếu chưa có)
 - **URL**: Từ `/HuyenHuyen/image/filename` → `/uploads/filename`
 
-### 2. ✅ Cải thiện MongoDB Connection
-- Tăng timeout từ 5s → 10s
+### 3. ✅ Cải thiện MongoDB Connection
+- Loại bỏ deprecated options (useNewUrlParser, useUnifiedTopology)
 - Thêm error handling và reconnection logic
 - Bind server to `0.0.0.0` thay vì localhost
 - Thêm detailed error messages
 
-### 3. ✅ Environment Variables
+### 4. ✅ Environment Variables
 - Thêm `NODE_ENV=production`
 - Conditional static file serving
 
@@ -22,13 +36,13 @@
 ### Bước 1: Push code lên GitHub
 ```bash
 git add .
-git commit -m "Fix deployment issues - update file paths and MongoDB connection"
+git commit -m "Fix babel-node error and deployment issues"
 git push origin main
 ```
 
 ### Bước 2: Cấu hình trên Render
 1. **Build Command**: `npm install`
-2. **Start Command**: `npm start`
+2. **Start Command**: `npm start` (sẽ chạy `node src/index.js`)
 3. **Environment Variables**:
    - `MONGO_URI`: `mongodb+srv://huyenhuyen:HuyenYeuTung2026!@cluster0.shmodiu.mongodb.net/huyenhuyen?retryWrites=true&w=majority&appName=Cluster0`
    - `JWT_SECRET`: `huyen-yeu-tung-2026-super-secret-jwt-key-for-love-app`
@@ -67,7 +81,7 @@ backend/
 │   ├── middleware/
 │   ├── models/
 │   └── routers/
-└── package.json
+└── package.json       # Đã fix start script
 ```
 
 ## 🔄 Cập nhật Frontend:

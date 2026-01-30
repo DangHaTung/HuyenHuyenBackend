@@ -67,8 +67,6 @@ app.post('/api/upload', (req, res) => {
 
 //  Kết nối DB với options tối ưu cho production
 const mongoOptions = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 10000, // Timeout sau 10s
   socketTimeoutMS: 45000, // Close sockets sau 45s không hoạt động
   maxPoolSize: 10, // Maintain up to 10 socket connections
