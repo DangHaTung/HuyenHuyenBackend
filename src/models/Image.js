@@ -20,7 +20,7 @@ const imageSchema = new mongoose.Schema({
   },
   cloudinaryId: {
     type: String,
-    required: true // ID để xóa ảnh trên Cloudinary
+    required: false // Không bắt buộc để tương thích với fallback
   },
   uploadDate: {
     type: Date,

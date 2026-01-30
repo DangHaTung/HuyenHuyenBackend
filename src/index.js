@@ -20,7 +20,16 @@ const server = createServer(app)
 
 // Middleware
 app.use(express.json())
-app.use(cors())
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://huyen-huyen-wwpw.vercel.app',
+    'https://huyen-huyen-94sb.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
 
 // Serve static files từ thư mục uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
@@ -33,6 +42,12 @@ if (process.env.NODE_ENV !== 'production') {
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/images', imageRoutes)
+
+// Debug middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`)
+  next()
+})
 
 // Health check endpoint
 app.get('/', (req, res) => {

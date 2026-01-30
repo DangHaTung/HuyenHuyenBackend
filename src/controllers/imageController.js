@@ -1,46 +1,59 @@
-import cloudinary from '../config/cloudinary.js'
+import cloudinary, { hasCloudinaryConfig } from '../config/cloudinary.js'
 import Image from '../models/Image.js'
 
-// Upload ảnh lên Cloudinary
+// Upload ảnh - với fallback nếu không có Cloudinary
 export const uploadImage = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Không có file được upload!' })
     }
     
-    // Upload lên Cloudinary
-    const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          folder: 'huyen-huyen-gallery', // Tạo folder riêng
-          resource_type: 'image',
-          transformation: [
-            { width: 1200, height: 1200, crop: 'limit' }, // Resize tối đa 1200x1200
-            { quality: 'auto' } // Tự động optimize chất lượng
-          ]
-        },
-        (error, result) => {
-          if (error) reject(error)
-          else resolve(result)
-        }
-      ).end(req.file.buffer)
-    })
+    let imageUrl, filename, cloudinaryId = null
+    
+    if (hasCloudinaryConfig()) {
+      // Upload lên Cloudinary
+      const result = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          {
+            folder: 'huyen-huyen-gallery',
+            resource_type: 'image',
+            transformation: [
+              { width: 1200, height: 1200, crop: 'limit' },
+              { quality: 'auto' }
+            ]
+          },
+          (error, result) => {
+            if (error) reject(error)
+            else resolve(result)
+          }
+        ).end(req.file.buffer)
+      })
+      
+      imageUrl = result.secure_url
+      filename = result.public_id
+      cloudinaryId = result.public_id
+    } else {
+      // Fallback: Trả về base64 (tạm thời)
+      const base64 = req.file.buffer.toString('base64')
+      imageUrl = `data:${req.file.mimetype};base64,${base64}`
+      filename = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }
     
     // Lưu metadata vào database
     const imageDoc = new Image({
-      filename: result.public_id, // Dùng Cloudinary public_id
+      filename: filename,
       originalName: req.file.originalname,
       description: '',
-      url: result.secure_url, // URL từ Cloudinary
-      cloudinaryId: result.public_id // Lưu để xóa sau này
+      url: imageUrl,
+      cloudinaryId: cloudinaryId
     })
     
     await imageDoc.save()
     
     res.json({ 
       success: true, 
-      imageUrl: result.secure_url,
-      filename: result.public_id,
+      imageUrl: imageUrl,
+      filename: filename,
       id: imageDoc._id
     })
   } catch (error) {
