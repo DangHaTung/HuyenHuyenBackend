@@ -72,9 +72,8 @@ const mongoOptions = {
   maxPoolSize: 10,
   retryWrites: true,
   w: 'majority',
-  connectTimeoutMS: 30000,
-  bufferMaxEntries: 0, // Disable mongoose buffering
-  bufferCommands: false // Disable mongoose buffering
+  connectTimeoutMS: 30000
+  // Loại bỏ bufferMaxEntries và bufferCommands vì không được hỗ trợ
 }
 
 // Thêm error handling cho MongoDB connection
@@ -91,6 +90,9 @@ mongoose.connection.on('reconnected', () => {
 })
 
 // Retry connection function
+let retryCount = 0
+const maxRetries = 3
+
 const connectWithRetry = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, mongoOptions)
@@ -106,14 +108,20 @@ const connectWithRetry = async () => {
     })
   } catch (err) {
     console.error('❌ Lỗi kết nối MongoDB:', err.message)
-    console.error('💡 Kiểm tra lại:')
-    console.error('   - MONGO_URI trong environment variables')
-    console.error('   - Network access trong MongoDB Atlas (0.0.0.0/0)')
-    console.error('   - Username/password chính xác')
-    console.error('   - Database user có quyền đọc/ghi')
-    console.log('🔄 Thử kết nối lại sau 5 giây...')
+    retryCount++
     
-    setTimeout(connectWithRetry, 5000)
+    if (retryCount <= maxRetries) {
+      console.log(`🔄 Thử kết nối lại lần ${retryCount}/${maxRetries} sau 5 giây...`)
+      setTimeout(connectWithRetry, 5000)
+    } else {
+      console.error('💥 Đã thử kết nối tối đa, dừng server')
+      console.error('💡 Kiểm tra lại:')
+      console.error('   - MONGO_URI trong environment variables')
+      console.error('   - Network access trong MongoDB Atlas (0.0.0.0/0)')
+      console.error('   - Username/password chính xác')
+      console.error('   - Database user có quyền đọc/ghi')
+      process.exit(1)
+    }
   }
 }
 
