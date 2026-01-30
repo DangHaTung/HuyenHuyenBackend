@@ -22,8 +22,13 @@ const server = createServer(app)
 app.use(express.json())
 app.use(cors())
 
-// Serve static files từ thư mục HuyenHuyen
-app.use('/HuyenHuyen', express.static(path.join(__dirname, '../../HuyenHuyen')))
+// Serve static files từ thư mục uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
+// Serve static files từ thư mục HuyenHuyen (cho local development)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/HuyenHuyen', express.static(path.join(__dirname, '../../HuyenHuyen')))
+}
 
 // Routes
 app.use('/api/auth', authRoutes)
@@ -60,14 +65,29 @@ app.post('/api/upload', (req, res) => {
   imageRoutes(req, res)
 })
 
-//  Kết nối DB với options tối ưu
+//  Kết nối DB với options tối ưu cho production
 const mongoOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Timeout sau 5s
+  serverSelectionTimeoutMS: 10000, // Timeout sau 10s
   socketTimeoutMS: 45000, // Close sockets sau 45s không hoạt động
   maxPoolSize: 10, // Maintain up to 10 socket connections
+  retryWrites: true,
+  w: 'majority'
 }
+
+// Thêm error handling cho MongoDB connection
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err)
+})
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️ MongoDB disconnected')
+})
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected')
+})
 
 mongoose
   .connect(process.env.MONGO_URI, mongoOptions)
@@ -77,13 +97,17 @@ mongoose
     console.log('🌐 Host:', mongoose.connection.host)
     
     const PORT = process.env.PORT || 3000
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server đang chạy tại cổng: ${PORT}`)
       console.log(`🌐 Local: http://localhost:${PORT}`)
+      console.log(`📁 Uploads directory: ${path.join(__dirname, '../uploads')}`)
     })
   })
   .catch((err) => {
     console.error('❌ Lỗi kết nối MongoDB:', err.message)
-    console.error('💡 Kiểm tra lại MONGO_URI trong file .env')
+    console.error('💡 Kiểm tra lại:')
+    console.error('   - MONGO_URI trong file .env')
+    console.error('   - Network access trong MongoDB Atlas')
+    console.error('   - Username/password chính xác')
     process.exit(1)
   })

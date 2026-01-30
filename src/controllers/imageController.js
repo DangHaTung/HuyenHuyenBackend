@@ -6,6 +6,9 @@ import Image from '../models/Image.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+// Đường dẫn thư mục uploads
+const uploadsDir = path.join(__dirname, '../../uploads')
+
 // Upload ảnh
 export const uploadImage = async (req, res) => {
   try {
@@ -13,7 +16,7 @@ export const uploadImage = async (req, res) => {
       return res.status(400).json({ error: 'Không có file được upload!' })
     }
     
-    const imageUrl = `/HuyenHuyen/image/${req.file.filename}`
+    const imageUrl = `/uploads/${req.file.filename}`
     
     // Lưu metadata vào database
     const imageDoc = new Image({
@@ -44,11 +47,10 @@ export const getImages = async (req, res) => {
     const images = await Image.find().sort({ uploadDate: -1 })
     
     // Kiểm tra file có tồn tại không
-    const imagePath = path.join(__dirname, '../../../HuyenHuyen/image/')
     const validImages = []
     
     for (const img of images) {
-      const filePath = path.join(imagePath, img.filename)
+      const filePath = path.join(uploadsDir, img.filename)
       if (fs.existsSync(filePath)) {
         validImages.push({
           id: img._id,
@@ -81,7 +83,7 @@ export const deleteImage = async (req, res) => {
       return res.status(400).json({ error: 'Tên file không hợp lệ!' })
     }
     
-    const imagePath = path.join(__dirname, '../../../HuyenHuyen/image/', filename)
+    const imagePath = path.join(uploadsDir, filename)
     
     // Kiểm tra file có tồn tại không
     if (!fs.existsSync(imagePath)) {
@@ -115,8 +117,7 @@ export const updateImage = async (req, res) => {
       return res.status(400).json({ error: 'Tên file không hợp lệ!' })
     }
     
-    const imagePath = path.join(__dirname, '../../../HuyenHuyen/image/')
-    const oldPath = path.join(imagePath, filename)
+    const oldPath = path.join(uploadsDir, filename)
     
     // Kiểm tra file có tồn tại không
     if (!fs.existsSync(oldPath)) {
@@ -137,11 +138,11 @@ export const updateImage = async (req, res) => {
       const fileExtension = path.extname(filename)
       const timestamp = Date.now()
       newFilename = `uploaded-${newName.trim().replace(/[^a-zA-Z0-9]/g, '_')}-${timestamp}${fileExtension}`
-      const newPath = path.join(imagePath, newFilename)
+      const newPath = path.join(uploadsDir, newFilename)
       
       // Rename file
       fs.renameSync(oldPath, newPath)
-      newUrl = `/HuyenHuyen/image/${newFilename}`
+      newUrl = `/uploads/${newFilename}`
     }
     
     // Cập nhật database
