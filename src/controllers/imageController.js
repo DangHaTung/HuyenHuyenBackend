@@ -1,43 +1,40 @@
 import cloudinary, { hasCloudinaryConfig } from '../config/cloudinary.js'
 import Image from '../models/Image.js'
 
-// Upload ảnh - với fallback nếu không có Cloudinary
+// Upload ảnh lên Cloudinary với URL fix
 export const uploadImage = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Không có file được upload!' })
     }
     
-    let imageUrl, filename, cloudinaryId = null
+    // Upload lên Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: 'huyen-huyen-gallery',
+          resource_type: 'image',
+          transformation: [
+            { width: 1200, height: 1200, crop: 'limit' },
+            { quality: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error)
+          else resolve(result)
+        }
+      ).end(req.file.buffer)
+    })
     
-    if (hasCloudinaryConfig()) {
-      // Upload lên Cloudinary
-      const result = await new Promise((resolve, reject) => {
-        cloudinary.uploader.upload_stream(
-          {
-            folder: 'huyen-huyen-gallery',
-            resource_type: 'image',
-            transformation: [
-              { width: 1200, height: 1200, crop: 'limit' },
-              { quality: 'auto' }
-            ]
-          },
-          (error, result) => {
-            if (error) reject(error)
-            else resolve(result)
-          }
-        ).end(req.file.buffer)
-      })
-      
-      imageUrl = result.secure_url
-      filename = result.public_id
-      cloudinaryId = result.public_id
-    } else {
-      // Fallback: Trả về base64 (tạm thời)
-      const base64 = req.file.buffer.toString('base64')
-      imageUrl = `data:${req.file.mimetype};base64,${base64}`
-      filename = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    }
+    // Sử dụng secure_url từ Cloudinary response
+    const imageUrl = result.secure_url
+    const filename = result.public_id
+    const cloudinaryId = result.public_id
+    
+    console.log('✅ Cloudinary upload success:', {
+      public_id: result.public_id,
+      secure_url: result.secure_url
+    })
     
     // Lưu metadata vào database
     const imageDoc = new Image({
@@ -65,17 +62,30 @@ export const uploadImage = async (req, res) => {
 // Lấy danh sách ảnh
 export const getImages = async (req, res) => {
   try {
-    // Lấy từ database - không cần kiểm tra file tồn tại vì dùng Cloudinary
+    // Lấy từ database
     const images = await Image.find().sort({ uploadDate: -1 })
     
-    const validImages = images.map(img => ({
-      id: img._id,
-      filename: img.filename,
-      originalName: img.originalName,
-      description: img.description,
-      url: img.url, // URL từ Cloudinary
-      uploadDate: img.uploadDate
-    }))
+    const validImages = images.map(img => {
+      let imageUrl = img.url
+      
+      // Fix URL cho ảnh Cloudinary cũ có version number
+      if (imageUrl.includes('cloudinary.com') && imageUrl.includes('/v1')) {
+        // Loại bỏ version number từ URL
+        const publicId = img.filename || img.cloudinaryId
+        if (publicId) {
+          imageUrl = `https://res.cloudinary.com/ddm4qzjmv/image/upload/${publicId}.jpg`
+        }
+      }
+      
+      return {
+        id: img._id,
+        filename: img.filename,
+        originalName: img.originalName,
+        description: img.description,
+        url: imageUrl, // URL đã được fix
+        uploadDate: img.uploadDate
+      }
+    })
     
     res.json({ images: validImages })
   } catch (error) {
