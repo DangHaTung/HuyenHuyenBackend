@@ -9,31 +9,11 @@ export const requireAuth = (req, res, next) => {
   next()
 }
 
-// Middleware upload file
+// Middleware upload file - sử dụng memory storage cho Cloudinary
 import multer from 'multer'
-import path from 'path'
-import fs from 'fs'
-import { fileURLToPath } from 'url'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-// Tạo thư mục uploads nếu chưa tồn tại
-const uploadsDir = path.join(__dirname, '../../uploads')
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true })
-  console.log('✅ Đã tạo thư mục uploads:', uploadsDir)
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadsDir)
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-    cb(null, 'uploaded-' + uniqueSuffix + path.extname(file.originalname))
-  }
-})
+// Sử dụng memory storage thay vì disk storage
+const storage = multer.memoryStorage()
 
 export const upload = multer({ 
   storage: storage,
@@ -46,6 +26,6 @@ export const upload = multer({
     }
   },
   limits: {
-    fileSize: 5 * 1024 * 1024 // Giới hạn 5MB
+    fileSize: 10 * 1024 * 1024 // Tăng lên 10MB cho Cloudinary
   }
 })

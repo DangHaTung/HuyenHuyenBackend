@@ -1,37 +1,46 @@
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import cloudinary from '../config/cloudinary.js'
 import Image from '../models/Image.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-// Đường dẫn thư mục uploads
-const uploadsDir = path.join(__dirname, '../../uploads')
-
-// Upload ảnh
+// Upload ảnh lên Cloudinary
 export const uploadImage = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Không có file được upload!' })
     }
     
-    const imageUrl = `/uploads/${req.file.filename}`
+    // Upload lên Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: 'huyen-huyen-gallery', // Tạo folder riêng
+          resource_type: 'image',
+          transformation: [
+            { width: 1200, height: 1200, crop: 'limit' }, // Resize tối đa 1200x1200
+            { quality: 'auto' } // Tự động optimize chất lượng
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error)
+          else resolve(result)
+        }
+      ).end(req.file.buffer)
+    })
     
     // Lưu metadata vào database
     const imageDoc = new Image({
-      filename: req.file.filename,
+      filename: result.public_id, // Dùng Cloudinary public_id
       originalName: req.file.originalname,
       description: '',
-      url: imageUrl
+      url: result.secure_url, // URL từ Cloudinary
+      cloudinaryId: result.public_id // Lưu để xóa sau này
     })
     
     await imageDoc.save()
     
     res.json({ 
       success: true, 
-      imageUrl: imageUrl,
-      filename: req.file.filename,
+      imageUrl: result.secure_url,
+      filename: result.public_id,
       id: imageDoc._id
     })
   } catch (error) {
@@ -43,28 +52,17 @@ export const uploadImage = async (req, res) => {
 // Lấy danh sách ảnh
 export const getImages = async (req, res) => {
   try {
-    // Lấy từ database
+    // Lấy từ database - không cần kiểm tra file tồn tại vì dùng Cloudinary
     const images = await Image.find().sort({ uploadDate: -1 })
     
-    // Kiểm tra file có tồn tại không
-    const validImages = []
-    
-    for (const img of images) {
-      const filePath = path.join(uploadsDir, img.filename)
-      if (fs.existsSync(filePath)) {
-        validImages.push({
-          id: img._id,
-          filename: img.filename,
-          originalName: img.originalName,
-          description: img.description,
-          url: img.url,
-          uploadDate: img.uploadDate
-        })
-      } else {
-        // Xóa record nếu file không tồn tại
-        await Image.findByIdAndDelete(img._id)
-      }
-    }
+    const validImages = images.map(img => ({
+      id: img._id,
+      filename: img.filename,
+      originalName: img.originalName,
+      description: img.description,
+      url: img.url, // URL từ Cloudinary
+      uploadDate: img.uploadDate
+    }))
     
     res.json({ images: validImages })
   } catch (error) {
@@ -78,20 +76,16 @@ export const deleteImage = async (req, res) => {
   try {
     const { filename } = req.params
     
-    // Kiểm tra filename có hợp lệ không
-    if (!filename || !filename.startsWith('uploaded-')) {
-      return res.status(400).json({ error: 'Tên file không hợp lệ!' })
-    }
-    
-    const imagePath = path.join(uploadsDir, filename)
-    
-    // Kiểm tra file có tồn tại không
-    if (!fs.existsSync(imagePath)) {
+    // Tìm ảnh trong database
+    const imageDoc = await Image.findOne({ filename })
+    if (!imageDoc) {
       return res.status(404).json({ error: 'Không tìm thấy ảnh!' })
     }
     
-    // Xóa file
-    fs.unlinkSync(imagePath)
+    // Xóa ảnh trên Cloudinary
+    if (imageDoc.cloudinaryId) {
+      await cloudinary.uploader.destroy(imageDoc.cloudinaryId)
+    }
     
     // Xóa record trong database
     await Image.findOneAndDelete({ filename })
@@ -112,52 +106,23 @@ export const updateImage = async (req, res) => {
     const { filename } = req.params
     const { newName, description } = req.body
     
-    // Kiểm tra input
-    if (!filename || !filename.startsWith('uploaded-')) {
-      return res.status(400).json({ error: 'Tên file không hợp lệ!' })
-    }
-    
-    const oldPath = path.join(uploadsDir, filename)
-    
-    // Kiểm tra file có tồn tại không
-    if (!fs.existsSync(oldPath)) {
-      return res.status(404).json({ error: 'Không tìm thấy ảnh!' })
-    }
-    
     // Tìm record trong database
     const imageDoc = await Image.findOne({ filename })
     if (!imageDoc) {
       return res.status(404).json({ error: 'Không tìm thấy thông tin ảnh!' })
     }
     
-    let newFilename = filename
-    let newUrl = imageDoc.url
-    
-    // Nếu có đổi tên
-    if (newName && newName.trim() !== '') {
-      const fileExtension = path.extname(filename)
-      const timestamp = Date.now()
-      newFilename = `uploaded-${newName.trim().replace(/[^a-zA-Z0-9]/g, '_')}-${timestamp}${fileExtension}`
-      const newPath = path.join(uploadsDir, newFilename)
-      
-      // Rename file
-      fs.renameSync(oldPath, newPath)
-      newUrl = `/uploads/${newFilename}`
-    }
-    
-    // Cập nhật database
-    imageDoc.filename = newFilename
+    // Cập nhật database (không cần rename file vì dùng Cloudinary)
     imageDoc.originalName = newName || imageDoc.originalName
     imageDoc.description = description || imageDoc.description
-    imageDoc.url = newUrl
     
     await imageDoc.save()
     
     res.json({ 
       success: true, 
       message: 'Cập nhật thông tin ảnh thành công!',
-      newFilename: newFilename,
-      newUrl: newUrl,
+      newFilename: imageDoc.filename,
+      newUrl: imageDoc.url,
       originalName: imageDoc.originalName,
       description: imageDoc.description
     })
