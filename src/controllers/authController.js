@@ -4,8 +4,8 @@ export const login = (req, res) => {
   
   // Tài khoản fix cứng
   const validCredentials = {
-    username: 'huyen',
-    password: 'yeuanh123'
+    username: 'huyeniutung',
+    password: 'tungiuhuyen'
   }
   
   if (username === validCredentials.username && password === validCredentials.password) {

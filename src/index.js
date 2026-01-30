@@ -67,29 +67,33 @@ app.post('/api/upload', (req, res) => {
 
 //  Kết nối DB với options tối ưu cho production
 const mongoOptions = {
-  serverSelectionTimeoutMS: 10000, // Timeout sau 10s
-  socketTimeoutMS: 45000, // Close sockets sau 45s không hoạt động
-  maxPoolSize: 10, // Maintain up to 10 socket connections
+  serverSelectionTimeoutMS: 30000, // Tăng timeout lên 30s
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10,
   retryWrites: true,
-  w: 'majority'
+  w: 'majority',
+  connectTimeoutMS: 30000,
+  bufferMaxEntries: 0, // Disable mongoose buffering
+  bufferCommands: false // Disable mongoose buffering
 }
 
 // Thêm error handling cho MongoDB connection
 mongoose.connection.on('error', (err) => {
-  console.error('❌ MongoDB connection error:', err)
+  console.error('❌ MongoDB connection error:', err.message)
 })
 
 mongoose.connection.on('disconnected', () => {
-  console.log('⚠️ MongoDB disconnected')
+  console.log('⚠️ MongoDB disconnected - attempting to reconnect...')
 })
 
 mongoose.connection.on('reconnected', () => {
   console.log('✅ MongoDB reconnected')
 })
 
-mongoose
-  .connect(process.env.MONGO_URI, mongoOptions)
-  .then(() => {
+// Retry connection function
+const connectWithRetry = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, mongoOptions)
     console.log('✅ Kết nối MongoDB Atlas thành công!')
     console.log('📍 Database:', mongoose.connection.name)
     console.log('🌐 Host:', mongoose.connection.host)
@@ -100,12 +104,18 @@ mongoose
       console.log(`🌐 Local: http://localhost:${PORT}`)
       console.log(`📁 Uploads directory: ${path.join(__dirname, '../uploads')}`)
     })
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error('❌ Lỗi kết nối MongoDB:', err.message)
     console.error('💡 Kiểm tra lại:')
-    console.error('   - MONGO_URI trong file .env')
-    console.error('   - Network access trong MongoDB Atlas')
+    console.error('   - MONGO_URI trong environment variables')
+    console.error('   - Network access trong MongoDB Atlas (0.0.0.0/0)')
     console.error('   - Username/password chính xác')
-    process.exit(1)
-  })
+    console.error('   - Database user có quyền đọc/ghi')
+    console.log('🔄 Thử kết nối lại sau 5 giây...')
+    
+    setTimeout(connectWithRetry, 5000)
+  }
+}
+
+// Start connection
+connectWithRetry()
