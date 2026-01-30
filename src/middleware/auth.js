@@ -1,4 +1,4 @@
-// Middleware xác thực
+// Middleware xác thực - đơn giản hóa
 export const requireAuth = (req, res, next) => {
   const token = req.headers.authorization
   
@@ -9,10 +9,10 @@ export const requireAuth = (req, res, next) => {
   next()
 }
 
-// Middleware upload file - sử dụng memory storage cho Cloudinary
+// Middleware upload file
 import multer from 'multer'
 
-// Sử dụng memory storage thay vì disk storage
+// Sử dụng memory storage cho Cloudinary
 const storage = multer.memoryStorage()
 
 export const upload = multer({ 
@@ -26,6 +26,6 @@ export const upload = multer({
     }
   },
   limits: {
-    fileSize: 10 * 1024 * 1024 // Tăng lên 10MB cho Cloudinary
+    fileSize: 10 * 1024 * 1024 // 10MB
   }
 })

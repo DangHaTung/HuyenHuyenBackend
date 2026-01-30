@@ -99,7 +99,8 @@ export const getImages = async (req, res) => {
 // Xóa ảnh
 export const deleteImage = async (req, res) => {
   try {
-    const { filename } = req.params
+    // Lấy filename từ params và decode
+    const filename = decodeURIComponent(req.params.filename || req.params[0])
     
     // Tìm ảnh trong database
     const imageDoc = await Image.findOne({ filename })
@@ -128,7 +129,8 @@ export const deleteImage = async (req, res) => {
 // Cập nhật thông tin ảnh (tên + mô tả)
 export const updateImage = async (req, res) => {
   try {
-    const { filename } = req.params
+    // Lấy filename từ params và decode
+    const filename = decodeURIComponent(req.params.filename || req.params[0])
     const { newName, description } = req.body
     
     // Tìm record trong database

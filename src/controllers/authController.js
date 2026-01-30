@@ -1,25 +1,17 @@
-// Controller xử lý xác thực
+// Auth controller - đơn giản hóa, không cần authentication thực sự
+
 export const login = (req, res) => {
-  const { username, password } = req.body
-  
-  // Tài khoản fix cứng
-  const validCredentials = {
-    username: 'huyeniutung',
-    password: 'tungiuhuyen'
-  }
-  
-  if (username === validCredentials.username && password === validCredentials.password) {
-    // Tạo token đơn giản (trong thực tế nên dùng JWT)
-    const token = 'authenticated_' + Date.now()
-    res.json({ 
-      success: true, 
-      message: 'Đăng nhập thành công!',
-      token: token
-    })
-  } else {
-    res.status(401).json({ 
-      success: false, 
-      message: 'Tên đăng nhập hoặc mật khẩu không đúng!' 
-    })
-  }
+  // Trả về token giả để tương thích với frontend cũ
+  res.json({
+    success: true,
+    token: 'authenticated_huyen_yeuanh123',
+    message: 'Đăng nhập thành công!'
+  })
+}
+
+export const logout = (req, res) => {
+  res.json({
+    success: true,
+    message: 'Đăng xuất thành công!'
+  })
 }
