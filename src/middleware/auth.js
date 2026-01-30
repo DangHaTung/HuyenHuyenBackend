@@ -1,4 +1,4 @@
-// Middleware xác thực - đơn giản hóa
+// Middleware xác thực
 export const requireAuth = (req, res, next) => {
   const token = req.headers.authorization
   
@@ -11,9 +11,20 @@ export const requireAuth = (req, res, next) => {
 
 // Middleware upload file
 import multer from 'multer'
+import { CloudinaryStorage } from 'multer-storage-cloudinary'
+import cloudinary from '../config/cloudinary.js'
 
-// Sử dụng memory storage cho Cloudinary
-const storage = multer.memoryStorage()
+// Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'huyen-huyen-memories',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    transformation: [{ width: 1500, height: 1500, crop: 'limit' }]
+  }
+})
+
+console.log('📁 Using Cloudinary storage')
 
 export const upload = multer({ 
   storage: storage,
@@ -26,6 +37,6 @@ export const upload = multer({
     }
   },
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 5 * 1024 * 1024 // Giới hạn 5MB
   }
 })

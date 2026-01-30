@@ -20,7 +20,7 @@ const imageSchema = new mongoose.Schema({
   },
   cloudinaryId: {
     type: String,
-    required: false // Không bắt buộc để tương thích với fallback
+    default: ''
   },
   uploadDate: {
     type: Date,

@@ -1,17 +1,21 @@
-// Auth controller - đơn giản hóa, không cần authentication thực sự
-
+// Controller xử lý đăng nhập
 export const login = (req, res) => {
-  // Trả về token giả để tương thích với frontend cũ
-  res.json({
-    success: true,
-    token: 'authenticated_huyen_yeuanh123',
-    message: 'Đăng nhập thành công!'
-  })
-}
-
-export const logout = (req, res) => {
-  res.json({
-    success: true,
-    message: 'Đăng xuất thành công!'
-  })
+  const { username, password } = req.body
+  
+  // Đăng nhập fix cứng
+  if (username === 'huyen' && password === 'yeuanh123') {
+    // Tạo token đơn giản
+    const token = 'authenticated_' + username + '_' + password
+    
+    res.json({
+      success: true,
+      message: 'Đăng nhập thành công!',
+      token: token
+    })
+  } else {
+    res.status(401).json({
+      success: false,
+      error: 'Sai tên đăng nhập hoặc mật khẩu!'
+    })
+  }
 }

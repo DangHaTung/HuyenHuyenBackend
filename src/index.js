@@ -20,13 +20,7 @@ const server = createServer(app)
 
 // Middleware
 app.use(express.json())
-app.use(cors()) // Cho phép tất cả origins
-
-// Debug middleware - đặt trước routes
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path}`)
-  next()
-})
+app.use(cors())
 
 // Serve static files từ thư mục uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))

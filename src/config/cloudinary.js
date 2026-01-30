@@ -1,20 +1,16 @@
 import { v2 as cloudinary } from 'cloudinary'
 import dotenv from 'dotenv'
 
+// Load environment variables
 dotenv.config()
 
-// Cấu hình Cloudinary - với fallback nếu không có credentials
+// Cấu hình Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'demo',
-  api_key: process.env.CLOUDINARY_API_KEY || 'demo',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'demo'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 })
 
-// Kiểm tra xem có config Cloudinary không
-export const hasCloudinaryConfig = () => {
-  return process.env.CLOUDINARY_CLOUD_NAME && 
-         process.env.CLOUDINARY_API_KEY && 
-         process.env.CLOUDINARY_API_SECRET
-}
+console.log('✅ Cloudinary configured:', process.env.CLOUDINARY_CLOUD_NAME)
 
 export default cloudinary
